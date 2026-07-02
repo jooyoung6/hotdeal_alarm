@@ -16,7 +16,8 @@ site_map = {
     'clien': '클리앙',
     'ruriweb': '루리웹',
     'coolenjoy' : '쿨엔조이',
-    'quasarzone' : '퀘이사존'
+    'quasarzone' : '퀘이사존',
+    'snspring' : '청년이봄'
 }
 board_map = {
     'ppomppu': '뽐뿌게시판',
@@ -27,14 +28,16 @@ board_map = {
     'jirum': '알뜰구매',
     '1020': '핫딜/예판 유저',
     '600004': '핫딜/예판 업체',
-    'qb_saleinfo': '지름/할인정보'
+    'qb_saleinfo': '지름/할인정보',
+    'program_all': '전체프로그램'
 }
 site_board_map = {
     'ppomppu': ['ppomppu', 'ppomppu4', 'ppomppu8', 'money'],
     'clien': ['allsell', 'jirum'],
     'ruriweb': ['1020', '600004'],
     'coolenjoy' : ['jirum'],
-    'quasarzone': ['qb_saleinfo']
+    'quasarzone': ['qb_saleinfo'],
+    'snspring': ['program_all']
 }
 
 
@@ -50,6 +53,8 @@ def get_url_prefix(site_name):
         url_prefix = ''
     elif site_name == 'quasarzone':
         url_prefix = ''
+    elif site_name == 'snspring':
+        url_prefix = 'https://snspring.or.kr/'
 
     return url_prefix
 
@@ -81,6 +86,8 @@ class ModuleBasic(PluginModuleBase):
             'use_board_coolenjoy_jirum': 'False',
             'use_site_quasarzone': 'False',
             'use_board_quasarzone_qb_saleinfo': 'False',
+            'use_site_snspring': 'False',
+            'use_board_snspring_program_all': 'False',
             'use_hotdeal_alarm': 'False',
             'use_hotdeal_keyword_alarm': 'False',
             'use_hotdeal_keyword_alarm_dist' : 'False',
@@ -234,6 +241,20 @@ class ModuleBasic(PluginModuleBase):
                         new_obj['site'] = 'quasarzone'
                         new_obj['board'] = board
                         new_obj['url'] = 'https://quasarzone.com' + new_obj['url'] if new_obj['url'].startswith('/') else new_obj['url']
+                        ret['data'].append(new_obj)
+
+        if P.ModelSetting.get('use_site_snspring') == 'True':
+            boards = ['program_all']
+            for board in boards:
+                regex = r'<a href=\"(?P<url>programView\.do\?idx=\d+)\">(?:(?!</a>)[\s\S])*?class=\"txt01 program_title\">(?P<title>.+?)</span>'
+                url = 'https://snspring.or.kr/programList.do'
+                if P.ModelSetting.get(f'use_board_snspring_{board}') == 'True':
+                    getdata = sess.get(url)
+                    matches = re.finditer(regex, getdata.text, re.MULTILINE)
+                    for matchNum, match in enumerate(matches, start=1):
+                        new_obj = match.groupdict()
+                        new_obj['site'] = 'snspring'
+                        new_obj['board'] = board
                         ret['data'].append(new_obj)
 
         for row in ret['data']:
