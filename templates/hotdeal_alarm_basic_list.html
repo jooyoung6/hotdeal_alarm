@@ -17,6 +17,7 @@
             <option value="ruriweb">루리웹</option>
             <option value="coolenjoy">쿨엔조이</option>
             <option value="quasarzone">퀘이사존</option>
+            <option value="snspring">청년이봄</option>
 
           </select>
           <select id="option2" name="option2" class="form-control form-control-sm">
@@ -29,7 +30,7 @@
             <option value="1020">핫딜/예판 유저</option>
             <option value="600004">핫딜/예판 업체</option>
             <option value="qb_saleinfo">지름/할인정보</option>
-
+            <option value="program_all">전체프로그램</option>
 
           </select>
         </span>
@@ -82,8 +83,11 @@ function make_list(data) {
       case 'ppomppu':
         url_prefix = 'https://www.ppomppu.co.kr/zboard/'
       break;
-      case 'clien' : 
+      case 'clien' :
           url_prefix = 'https://www.clien.net';
+      break;
+      case 'snspring' :
+          url_prefix = 'https://snspring.or.kr/';
       break;
     }
     
