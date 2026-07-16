@@ -373,14 +373,15 @@ class ModuleBasic(PluginModuleBase):
                                 continue
                             arr = (item.get('arrival') or {}).get('value', '')
                             air = (item.get('air') or {}).get('value', '')
-                            price = (item.get('adult') or {}).get('value', 0)
+                            adult = item.get('adult') or {}
+                            total_price = adult.get('value', 0) + adult.get('tax', 0) + adult.get('tax2', 0)
                             sdate = (item.get('sDate') or {}).get('value', '')
                             edate = (item.get('eDate') or {}).get('value', '')
                             new_obj = {
                                 'site': 'modetour',
                                 'board': board,
                                 'url': str(item.get('stockPackageNo', '')),
-                                'title': f"{dep}→{arr} {air} {price:,}원 ({sdate}~{edate})"
+                                'title': f"{dep}→{arr} {air} {total_price:,}원 ({sdate}~{edate})"
                             }
                             ret['data'].append(new_obj)
 
