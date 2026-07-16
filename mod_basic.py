@@ -17,7 +17,8 @@ site_map = {
     'ruriweb': '루리웹',
     'coolenjoy' : '쿨엔조이',
     'quasarzone' : '퀘이사존',
-    'snspring' : '청년이봄'
+    'snspring' : '청년이봄',
+    'ybtour' : '노랑풍선'
 }
 board_map = {
     'ppomppu': '뽐뿌게시판',
@@ -29,7 +30,8 @@ board_map = {
     '1020': '핫딜/예판 유저',
     '600004': '핫딜/예판 업체',
     'qb_saleinfo': '지름/할인정보',
-    'program_all': '전체프로그램'
+    'program_all': '전체프로그램',
+    'discount_air': '특가항공권 전체'
 }
 site_board_map = {
     'ppomppu': ['ppomppu', 'ppomppu4', 'ppomppu8', 'money'],
@@ -37,7 +39,8 @@ site_board_map = {
     'ruriweb': ['1020', '600004'],
     'coolenjoy' : ['jirum'],
     'quasarzone': ['qb_saleinfo'],
-    'snspring': ['program_all']
+    'snspring': ['program_all'],
+    'ybtour': ['discount_air']
 }
 
 
@@ -55,6 +58,8 @@ def get_url_prefix(site_name):
         url_prefix = ''
     elif site_name == 'snspring':
         url_prefix = 'https://snspring.or.kr/'
+    elif site_name == 'ybtour':
+        url_prefix = 'https://fly.ybtour.co.kr/booking/findDiscountAir.lts?isViewBfm=N&svcTpCode=FARE&efcCode=INV&efcBannerCode=&efcCityCode=&sortItem=&sortDir=ASC&efcCodeList=&onePageCnt=#'
 
     return url_prefix
 
@@ -88,6 +93,8 @@ class ModuleBasic(PluginModuleBase):
             'use_board_quasarzone_qb_saleinfo': 'False',
             'use_site_snspring': 'False',
             'use_board_snspring_program_all': 'False',
+            'use_site_ybtour': 'False',
+            'use_board_ybtour_discount_air': 'False',
             'use_hotdeal_alarm': 'False',
             'use_hotdeal_keyword_alarm': 'False',
             'use_hotdeal_keyword_alarm_dist' : 'False',
@@ -256,6 +263,24 @@ class ModuleBasic(PluginModuleBase):
                         new_obj = match.groupdict()
                         new_obj['site'] = 'snspring'
                         new_obj['board'] = board
+                        ret['data'].append(new_obj)
+
+        if P.ModelSetting.get('use_site_ybtour') == 'True':
+            boards = ['discount_air']
+            for board in boards:
+                regex = r'<tr[^>]*id=\"fareListSeq_\d+\">[\s\S]*?<span>(?P<air>[^<]+)</span>[\s\S]*?<td class=\"tft_str\">(?P<dep>[^<]+)</td>[\s\S]*?<span class=\"ellipsis\">(?P<arr>[^<]+)</span>[\s\S]*?(?P<price>[\d,]+)\s*원[\s\S]*?<td class=\"tft_dat\">(?P<date>[^<]+)</td>[\s\S]*?<td class=\"tft_pan\">(?P<trip>[^<]+)</td>[\s\S]*?name=\"efmAfsId\" value=\"(?P<afsid>[^\"]+)\"'
+                url = 'https://fly.ybtour.co.kr/booking/findDiscountAir.lts?isViewBfm=N&svcTpCode=FARE&efcCode=INV&efcBannerCode=&efcCityCode=&sortItem=&sortDir=ASC&efcCodeList=&onePageCnt='
+                if P.ModelSetting.get(f'use_board_ybtour_{board}') == 'True':
+                    getdata = sess.get(url)
+                    matches = re.finditer(regex, getdata.text, re.MULTILINE)
+                    for matchNum, match in enumerate(matches, start=1):
+                        item = match.groupdict()
+                        new_obj = {
+                            'site': 'ybtour',
+                            'board': board,
+                            'url': item['afsid'],
+                            'title': f"[{item['trip']}] {item['dep']}→{item['arr']} {item['air']} {item['price']}원~ ({item['date']})"
+                        }
                         ret['data'].append(new_obj)
 
         for row in ret['data']:

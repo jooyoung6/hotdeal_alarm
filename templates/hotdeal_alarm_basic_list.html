@@ -18,6 +18,7 @@
             <option value="coolenjoy">쿨엔조이</option>
             <option value="quasarzone">퀘이사존</option>
             <option value="snspring">청년이봄</option>
+            <option value="ybtour">노랑풍선</option>
 
           </select>
           <select id="option2" name="option2" class="form-control form-control-sm">
@@ -31,6 +32,7 @@
             <option value="600004">핫딜/예판 업체</option>
             <option value="qb_saleinfo">지름/할인정보</option>
             <option value="program_all">전체프로그램</option>
+            <option value="discount_air">특가항공권 전체</option>
 
           </select>
         </span>
@@ -88,6 +90,9 @@ function make_list(data) {
       break;
       case 'snspring' :
           url_prefix = 'https://snspring.or.kr/';
+      break;
+      case 'ybtour' :
+          url_prefix = 'https://fly.ybtour.co.kr/booking/findDiscountAir.lts?isViewBfm=N&svcTpCode=FARE&efcCode=INV&efcBannerCode=&efcCityCode=&sortItem=&sortDir=ASC&efcCodeList=&onePageCnt=#';
       break;
     }
     
