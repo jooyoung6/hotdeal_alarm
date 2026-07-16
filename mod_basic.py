@@ -18,7 +18,8 @@ site_map = {
     'coolenjoy' : '쿨엔조이',
     'quasarzone' : '퀘이사존',
     'snspring' : '청년이봄',
-    'ybtour' : '노랑풍선'
+    'ybtour' : '노랑풍선',
+    'ttang' : '땡처리'
 }
 board_map = {
     'ppomppu': '뽐뿌게시판',
@@ -31,7 +32,8 @@ board_map = {
     '600004': '핫딜/예판 업체',
     'qb_saleinfo': '지름/할인정보',
     'program_all': '전체프로그램',
-    'discount_air': '특가항공권 전체'
+    'discount_air': '특가항공권 전체',
+    'today_air': '오늘오픈 특가항공'
 }
 site_board_map = {
     'ppomppu': ['ppomppu', 'ppomppu4', 'ppomppu8', 'money'],
@@ -40,7 +42,8 @@ site_board_map = {
     'coolenjoy' : ['jirum'],
     'quasarzone': ['qb_saleinfo'],
     'snspring': ['program_all'],
-    'ybtour': ['discount_air']
+    'ybtour': ['discount_air'],
+    'ttang': ['today_air']
 }
 
 
@@ -60,6 +63,8 @@ def get_url_prefix(site_name):
         url_prefix = 'https://snspring.or.kr/'
     elif site_name == 'ybtour':
         url_prefix = 'https://fly.ybtour.co.kr/booking/findDiscountAir.lts?isViewBfm=N&svcTpCode=FARE&efcCode=INV&efcBannerCode=&efcCityCode=&sortItem=&sortDir=ASC&efcCodeList=&onePageCnt=#'
+    elif site_name == 'ttang':
+        url_prefix = 'https://mm.ttang.com/ttangair/search/discount/today.do?trip=RT&gubun=T#'
 
     return url_prefix
 
@@ -95,6 +100,8 @@ class ModuleBasic(PluginModuleBase):
             'use_board_snspring_program_all': 'False',
             'use_site_ybtour': 'False',
             'use_board_ybtour_discount_air': 'False',
+            'use_site_ttang': 'False',
+            'use_board_ttang_today_air': 'False',
             'use_hotdeal_alarm': 'False',
             'use_hotdeal_keyword_alarm': 'False',
             'use_hotdeal_keyword_alarm_dist' : 'False',
@@ -282,6 +289,40 @@ class ModuleBasic(PluginModuleBase):
                             'title': f"[{item['trip']}] {item['dep']}→{item['arr']} {item['air']} {item['price']}원~ ({item['date']})"
                         }
                         ret['data'].append(new_obj)
+
+        if P.ModelSetting.get('use_site_ttang') == 'True':
+            boards = ['today_air']
+            for board in boards:
+                url = 'https://mm.ttang.com/ttangair/search/discount/listAct.do'
+                referer = 'https://mm.ttang.com/ttangair/search/discount/today.do?trip=RT&gubun=T'
+                if P.ModelSetting.get(f'use_board_ttang_{board}') == 'True':
+                    params = {
+                        'trip': 'RT', 'dep0': '', 'arr0': '', 'dep1': '', 'arr1': '', 'dep2': '', 'arr2': '',
+                        'dep0Name': '', 'arr0Name': '', 'dep1Name': '', 'arr1Name': '', 'dep2Name': '', 'arr2Name': '',
+                        'depdate0': '', 'depdate1': '', 'depdate2': '',
+                        'adt': '1', 'chd': '0', 'inf': '0',
+                        'comp': '', 'car': '', 'groupId': '', 'pflAffId': '', 'pflAfsId': '',
+                        'gubun': 'T', 'seq': '', 'requestData': '',
+                        'page': '1', 'scale': '200', 'totalCnt': '0'
+                    }
+                    getdata = sess.post(url, data=params, headers={'X-Requested-With': 'XMLHttpRequest', 'Referer': referer})
+                    cdata_match = re.search(r'<!\[CDATA\[(.*?)\]\]>', getdata.text, re.DOTALL)
+                    if cdata_match and cdata_match.group(1):
+                        payload = json.loads(cdata_match.group(1))
+                        for item in payload.get('response', []):
+                            trip = '왕복' if item.get('tripType') == 'RT' else '편도'
+                            from_d, to_d = item.get('fromSupplyDate', ''), item.get('toSupplyDate', '')
+                            if len(from_d) == 8 and len(to_d) == 8:
+                                date_str = f"{from_d[2:4]}/{from_d[4:6]}/{from_d[6:8]}~{to_d[2:4]}/{to_d[4:6]}/{to_d[6:8]}"
+                            else:
+                                date_str = f"{from_d}~{to_d}"
+                            new_obj = {
+                                'site': 'ttang',
+                                'board': board,
+                                'url': item.get('masterId', ''),
+                                'title': f"[{trip}] {item.get('depCityDesc','')}→{item.get('arrCityDesc','')} {item.get('tktCarDesc','')} {item.get('totalPrice',0):,}원~ ({date_str})"
+                            }
+                            ret['data'].append(new_obj)
 
         for row in ret['data']:
             ModelItem.update({
