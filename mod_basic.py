@@ -189,6 +189,7 @@ class ModuleBasic(PluginModuleBase):
         }
         P.logger.info("scrap_items")
         sess = requests.session()
+        sess.headers.update({'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'})
         # get model settings.
         if P.ModelSetting.get('use_site_ppomppu') == 'True':
             boards = ['ppomppu', 'ppomppu4', 'ppomppu8', 'money']
