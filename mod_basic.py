@@ -107,6 +107,7 @@ class ModuleBasic(PluginModuleBase):
                 self.get_scheduler_name())
             arg['is_running'] = F.scheduler.is_running(
                 self.get_scheduler_name())
+            arg['apikey'] = F.SystemModelSetting.get('apikey')
         if sub == 'list':
             arg = self.web_list_model.get_list()
         return render_template(f'{P.package_name}_{self.name}_{sub}.html', arg=arg, site_map=site_map, board_map=board_map, site_board_map=site_board_map)
@@ -340,6 +341,7 @@ class ModuleBasic(PluginModuleBase):
         elif sub =='web_push_subscribe':
             P.logger.info(req.get_json())
             subscription_info = req.get_json()
+            subscription_info.pop('apikey', None)
             web_push_subscription = json.loads(P.ModelSetting.get('web_push_subscription'))
             if type(web_push_subscription) != list:
                 web_push_subscription = []
@@ -348,8 +350,10 @@ class ModuleBasic(PluginModuleBase):
             P.ModelSetting.set('web_push_subscription', json.dumps(web_push_subscription))
             return subscription_info
 
-        elif sub == 'web_push' : 
-            self.web_push(req.get_json())
+        elif sub == 'web_push' :
+            push_data = req.get_json()
+            push_data.pop('apikey', None)
+            self.web_push(push_data)
             result = json.dumps({'status' : 'success'})
         elif sub == 'web_push_reset' :
             P.ModelSetting.set('web_push_subscription', '[]')
