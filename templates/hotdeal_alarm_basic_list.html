@@ -20,6 +20,7 @@
             <option value="snspring">청년이봄</option>
             <option value="ybtour">노랑풍선</option>
             <option value="ttang">땡처리</option>
+            <option value="modetour">모두투어</option>
 
           </select>
           <select id="option2" name="option2" class="form-control form-control-sm">
@@ -35,6 +36,7 @@
             <option value="program_all">전체프로그램</option>
             <option value="discount_air">특가항공권 전체</option>
             <option value="today_air">오늘오픈 특가항공</option>
+            <option value="discount_flight">특가항공</option>
 
           </select>
         </span>
@@ -98,6 +100,9 @@ function make_list(data) {
       break;
       case 'ttang' :
           url_prefix = 'https://mm.ttang.com/ttangair/search/discount/today.do?trip=RT&gubun=T#';
+      break;
+      case 'modetour' :
+          url_prefix = 'https://www.modetour.com/flights/discount-flight#';
       break;
     }
     

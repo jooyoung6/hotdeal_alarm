@@ -10,6 +10,10 @@ import os
 import json
 from tool import ToolNotify
 import traceback
+from urllib.parse import unquote
+from datetime import timedelta
+
+FLIGHT_DEPARTURE_ALLOW = ('인천', '김포', '청주')
 
 site_map = {
     'ppomppu': '뽐뿌',
@@ -19,7 +23,8 @@ site_map = {
     'quasarzone' : '퀘이사존',
     'snspring' : '청년이봄',
     'ybtour' : '노랑풍선',
-    'ttang' : '땡처리'
+    'ttang' : '땡처리',
+    'modetour' : '모두투어'
 }
 board_map = {
     'ppomppu': '뽐뿌게시판',
@@ -33,7 +38,8 @@ board_map = {
     'qb_saleinfo': '지름/할인정보',
     'program_all': '전체프로그램',
     'discount_air': '특가항공권 전체',
-    'today_air': '오늘오픈 특가항공'
+    'today_air': '오늘오픈 특가항공',
+    'discount_flight': '특가항공'
 }
 site_board_map = {
     'ppomppu': ['ppomppu', 'ppomppu4', 'ppomppu8', 'money'],
@@ -43,7 +49,8 @@ site_board_map = {
     'quasarzone': ['qb_saleinfo'],
     'snspring': ['program_all'],
     'ybtour': ['discount_air'],
-    'ttang': ['today_air']
+    'ttang': ['today_air'],
+    'modetour': ['discount_flight']
 }
 
 
@@ -65,6 +72,8 @@ def get_url_prefix(site_name):
         url_prefix = 'https://fly.ybtour.co.kr/booking/findDiscountAir.lts?isViewBfm=N&svcTpCode=FARE&efcCode=INV&efcBannerCode=&efcCityCode=&sortItem=&sortDir=ASC&efcCodeList=&onePageCnt=#'
     elif site_name == 'ttang':
         url_prefix = 'https://mm.ttang.com/ttangair/search/discount/today.do?trip=RT&gubun=T#'
+    elif site_name == 'modetour':
+        url_prefix = 'https://www.modetour.com/flights/discount-flight#'
 
     return url_prefix
 
@@ -102,6 +111,8 @@ class ModuleBasic(PluginModuleBase):
             'use_board_ybtour_discount_air': 'False',
             'use_site_ttang': 'False',
             'use_board_ttang_today_air': 'False',
+            'use_site_modetour': 'False',
+            'use_board_modetour_discount_flight': 'False',
             'use_hotdeal_alarm': 'False',
             'use_hotdeal_keyword_alarm': 'False',
             'use_hotdeal_keyword_alarm_dist' : 'False',
@@ -282,6 +293,8 @@ class ModuleBasic(PluginModuleBase):
                     matches = re.finditer(regex, getdata.text, re.MULTILINE)
                     for matchNum, match in enumerate(matches, start=1):
                         item = match.groupdict()
+                        if item['dep'] not in FLIGHT_DEPARTURE_ALLOW:
+                            continue
                         new_obj = {
                             'site': 'ybtour',
                             'board': board,
@@ -310,6 +323,8 @@ class ModuleBasic(PluginModuleBase):
                     if cdata_match and cdata_match.group(1):
                         payload = json.loads(cdata_match.group(1))
                         for item in payload.get('response', []):
+                            if item.get('depCityDesc') not in FLIGHT_DEPARTURE_ALLOW:
+                                continue
                             trip = '왕복' if item.get('tripType') == 'RT' else '편도'
                             from_d, to_d = item.get('fromSupplyDate', ''), item.get('toSupplyDate', '')
                             if len(from_d) == 8 and len(to_d) == 8:
@@ -321,6 +336,50 @@ class ModuleBasic(PluginModuleBase):
                                 'board': board,
                                 'url': item.get('masterId', ''),
                                 'title': f"[{trip}] {item.get('depCityDesc','')}→{item.get('arrCityDesc','')} {item.get('tktCarDesc','')} {item.get('totalPrice',0):,}원~ ({date_str})"
+                            }
+                            ret['data'].append(new_obj)
+
+        if P.ModelSetting.get('use_site_modetour') == 'True':
+            boards = ['discount_flight']
+            for board in boards:
+                if P.ModelSetting.get(f'use_board_modetour_{board}') == 'True':
+                    sess.get('https://www.modetour.com/flights/discount-flight')
+                    raw_ctx = sess.cookies.get('ModeEcommerceContext')
+                    if raw_ctx:
+                        ctx = json.loads(unquote(raw_ctx))
+                        api_header = json.dumps({
+                            'webSiteNo': ctx.get('webSiteNo'),
+                            'companyNo': ctx.get('companyNo'),
+                            'deviceType': ctx.get('deviceType'),
+                            'apiKey': ctx.get('apiKey')
+                        })
+                        dep_date = datetime.now().strftime('%Y-%m-%d')
+                        arr_date = (datetime.now() + timedelta(days=30)).strftime('%Y-%m-%d')
+                        params = {
+                            'departureCity': '', 'continentCode': 'ASIA', 'arrivalCity': '',
+                            'departureDate': dep_date, 'arrivalDate': arr_date,
+                            'page': 1, 'itemCount': 200
+                        }
+                        getdata = sess.get('https://b2c-api.modetour.com/DiscountFlight/GetList',
+                                            params=params, headers={'ModeWebApiReqHeader': api_header})
+                        try:
+                            payload = getdata.json()
+                        except Exception:
+                            payload = {}
+                        for item in payload.get('result', []):
+                            dep = (item.get('departure') or {}).get('value')
+                            if dep not in FLIGHT_DEPARTURE_ALLOW:
+                                continue
+                            arr = (item.get('arrival') or {}).get('value', '')
+                            air = (item.get('air') or {}).get('value', '')
+                            price = (item.get('adult') or {}).get('value', 0)
+                            sdate = (item.get('sDate') or {}).get('value', '')
+                            edate = (item.get('eDate') or {}).get('value', '')
+                            new_obj = {
+                                'site': 'modetour',
+                                'board': board,
+                                'url': str(item.get('stockPackageNo', '')),
+                                'title': f"{dep}→{arr} {air} {price:,}원 ({sdate}~{edate})"
                             }
                             ret['data'].append(new_obj)
 
