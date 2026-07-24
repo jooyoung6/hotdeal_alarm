@@ -27,7 +27,8 @@ site_map = {
     'ybtour' : '노랑풍선',
     'ttang' : '땡처리',
     'modetour' : '모두투어',
-    'youthcenter' : '온통청년'
+    'youthcenter' : '온통청년',
+    'gg_youth' : '경기청년포털'
 }
 board_map = {
     'ppomppu': '뽐뿌게시판',
@@ -43,7 +44,8 @@ board_map = {
     'discount_air': '특가항공권 전체',
     'today_air': '오늘오픈 특가항공',
     'discount_flight': '특가항공',
-    'bundang_policy': '성남시 분당구 청년정책'
+    'bundang_policy': '성남시 분당구 청년정책',
+    'seongnam_gg_policy': '성남시/경기도 청년정책'
 }
 site_board_map = {
     'ppomppu': ['ppomppu', 'ppomppu4', 'ppomppu8', 'money'],
@@ -55,7 +57,8 @@ site_board_map = {
     'ybtour': ['discount_air'],
     'ttang': ['today_air'],
     'modetour': ['discount_flight'],
-    'youthcenter': ['bundang_policy']
+    'youthcenter': ['bundang_policy'],
+    'gg_youth': ['seongnam_gg_policy']
 }
 
 
@@ -81,6 +84,8 @@ def get_url_prefix(site_name):
         url_prefix = 'https://www.modetour.com/flights/discount-flight#'
     elif site_name == 'youthcenter':
         url_prefix = 'https://www.youthcenter.go.kr/youthPolicy/ythPlcyTotalSearch/ythPlcyDetail/'
+    elif site_name == 'gg_youth':
+        url_prefix = 'https://youth.gg.go.kr/gg/archive-policy-search.do?mode=view&arcNo='
 
     return url_prefix
 
@@ -122,6 +127,8 @@ class ModuleBasic(PluginModuleBase):
             'use_board_modetour_discount_flight': 'False',
             'use_site_youthcenter': 'False',
             'use_board_youthcenter_bundang_policy': 'False',
+            'use_site_gg_youth': 'False',
+            'use_board_gg_youth_seongnam_gg_policy': 'False',
             'use_hotdeal_alarm': 'False',
             'use_hotdeal_keyword_alarm': 'False',
             'use_hotdeal_keyword_alarm_dist' : 'False',
@@ -420,6 +427,24 @@ class ModuleBasic(PluginModuleBase):
                             'board': board,
                             'url': str(item.get('DOCID', '')),
                             'title': f"[{status}] {item.get('PLCY_NM', '')}{period}"
+                        }
+                        ret['data'].append(new_obj)
+
+        if P.ModelSetting.get('use_site_gg_youth') == 'True':
+            boards = ['seongnam_gg_policy']
+            for board in boards:
+                regex = r'<a href=\"\?mode=view&amp;arcNo=(?P<arcno>\d+)[^\"]*\"[^>]*>[\s\S]*?</span>\s*(?P<title>[^\r\n<]+?)\s*</a>\s*</h5>\s*<ul class=\"date\">[\s\S]*?<strong>모집기간 : </strong>[\s\S]*?(?P<start>\d{4}\.\d{2}\.\d{2})[\s\S]*?(?P<end>\d{4}\.\d{2}\.\d{2})'
+                url = 'https://youth.gg.go.kr/gg/archive-policy-search.do?mode=list&pager.offset=0&pagerLimit=200&srAge=age_070&srArea=seongnam&srArea=GG&srArea=GGNot'
+                if P.ModelSetting.get(f'use_board_gg_youth_{board}') == 'True':
+                    getdata = sess.get(url)
+                    matches = re.finditer(regex, getdata.text, re.MULTILINE)
+                    for matchNum, match in enumerate(matches, start=1):
+                        item = match.groupdict()
+                        new_obj = {
+                            'site': 'gg_youth',
+                            'board': board,
+                            'url': item['arcno'],
+                            'title': f"{item['title']} ({item['start']}~{item['end']})"
                         }
                         ret['data'].append(new_obj)
 

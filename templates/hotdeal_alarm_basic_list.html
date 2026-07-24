@@ -22,6 +22,7 @@
             <option value="ttang">땡처리</option>
             <option value="modetour">모두투어</option>
             <option value="youthcenter">온통청년</option>
+            <option value="gg_youth">경기청년포털</option>
 
           </select>
           <select id="option2" name="option2" class="form-control form-control-sm">
@@ -39,6 +40,7 @@
             <option value="today_air">오늘오픈 특가항공</option>
             <option value="discount_flight">특가항공</option>
             <option value="bundang_policy">성남시 분당구 청년정책</option>
+            <option value="seongnam_gg_policy">성남시/경기도 청년정책</option>
 
           </select>
         </span>
@@ -108,6 +110,9 @@ function make_list(data) {
       break;
       case 'youthcenter' :
           url_prefix = 'https://www.youthcenter.go.kr/youthPolicy/ythPlcyTotalSearch/ythPlcyDetail/';
+      break;
+      case 'gg_youth' :
+          url_prefix = 'https://youth.gg.go.kr/gg/archive-policy-search.do?mode=view&arcNo=';
       break;
     }
     
