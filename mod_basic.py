@@ -14,6 +14,8 @@ from urllib.parse import unquote
 from datetime import timedelta
 
 FLIGHT_DEPARTURE_ALLOW = ('인천', '김포', '청주')
+YOUTH_AGE_FILTER = '38'
+YOUTH_REGION_FILTER = '성남시 분당구'
 
 site_map = {
     'ppomppu': '뽐뿌',
@@ -24,7 +26,8 @@ site_map = {
     'snspring' : '청년이봄',
     'ybtour' : '노랑풍선',
     'ttang' : '땡처리',
-    'modetour' : '모두투어'
+    'modetour' : '모두투어',
+    'youthcenter' : '온통청년'
 }
 board_map = {
     'ppomppu': '뽐뿌게시판',
@@ -39,7 +42,8 @@ board_map = {
     'program_all': '전체프로그램',
     'discount_air': '특가항공권 전체',
     'today_air': '오늘오픈 특가항공',
-    'discount_flight': '특가항공'
+    'discount_flight': '특가항공',
+    'bundang_policy': '성남시 분당구 청년정책'
 }
 site_board_map = {
     'ppomppu': ['ppomppu', 'ppomppu4', 'ppomppu8', 'money'],
@@ -50,7 +54,8 @@ site_board_map = {
     'snspring': ['program_all'],
     'ybtour': ['discount_air'],
     'ttang': ['today_air'],
-    'modetour': ['discount_flight']
+    'modetour': ['discount_flight'],
+    'youthcenter': ['bundang_policy']
 }
 
 
@@ -74,6 +79,8 @@ def get_url_prefix(site_name):
         url_prefix = 'https://mm.ttang.com/ttangair/search/discount/today.do?trip=RT&gubun=T#'
     elif site_name == 'modetour':
         url_prefix = 'https://www.modetour.com/flights/discount-flight#'
+    elif site_name == 'youthcenter':
+        url_prefix = 'https://www.youthcenter.go.kr/youthPolicy/ythPlcyTotalSearch/ythPlcyDetail/'
 
     return url_prefix
 
@@ -113,6 +120,8 @@ class ModuleBasic(PluginModuleBase):
             'use_board_ttang_today_air': 'False',
             'use_site_modetour': 'False',
             'use_board_modetour_discount_flight': 'False',
+            'use_site_youthcenter': 'False',
+            'use_board_youthcenter_bundang_policy': 'False',
             'use_hotdeal_alarm': 'False',
             'use_hotdeal_keyword_alarm': 'False',
             'use_hotdeal_keyword_alarm_dist' : 'False',
@@ -384,6 +393,35 @@ class ModuleBasic(PluginModuleBase):
                                 'title': f"{dep}→{arr} {air} {total_price:,}원 ({sdate}~{edate})"
                             }
                             ret['data'].append(new_obj)
+
+        if P.ModelSetting.get('use_site_youthcenter') == 'True':
+            boards = ['bundang_policy']
+            for board in boards:
+                url = 'https://www.youthcenter.go.kr/pubot/search/portalPolicySearch'
+                if P.ModelSetting.get(f'use_board_youthcenter_{board}') == 'True':
+                    payload = {
+                        'pageNum': 1, 'listCount': 3000, 'sortFields': 'DATE/DESC',
+                        'searchFields': 'all', 'SPRT_TRGT_AGE': YOUTH_AGE_FILTER
+                    }
+                    getdata = sess.post(url, json=payload,
+                                         headers={'Referer': 'https://www.youthcenter.go.kr/youthPolicy/ythPlcyTotalSearch'})
+                    try:
+                        res_json = getdata.json()
+                    except Exception:
+                        res_json = {}
+                    for item in (res_json.get('searchResult') or {}).get('youthpolicy') or []:
+                        if YOUTH_REGION_FILTER not in (item.get('STDG_NM') or ''):
+                            continue
+                        end_ymd = item.get('APLY_PRD_END_YMD') or ''
+                        status = item.get('APLY_PRD_SE_CD') or ''
+                        period = f" (~{end_ymd[:4]}-{end_ymd[4:6]}-{end_ymd[6:8]})" if len(end_ymd) == 8 else ''
+                        new_obj = {
+                            'site': 'youthcenter',
+                            'board': board,
+                            'url': str(item.get('DOCID', '')),
+                            'title': f"[{status}] {item.get('PLCY_NM', '')}{period}"
+                        }
+                        ret['data'].append(new_obj)
 
         for row in ret['data']:
             ModelItem.update({
