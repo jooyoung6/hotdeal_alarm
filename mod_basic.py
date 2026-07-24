@@ -289,13 +289,15 @@ class ModuleBasic(PluginModuleBase):
         if P.ModelSetting.get('use_site_snspring') == 'True':
             boards = ['program_all']
             for board in boards:
-                regex = r'<a href=\"(?P<url>programView\.do\?idx=\d+)\">(?:(?!</a>)[\s\S])*?class=\"txt01 program_title\">(?P<title>.+?)</span>'
+                regex = r'<a href=\"(?P<url>programView\.do\?idx=\d+)\">(?:(?!</a>)[\s\S])*?class=\"stat\">(?P<status>[^<]*)</span>(?:(?!</a>)[\s\S])*?class=\"txt01 program_title\">(?P<title>.+?)</span>'
                 url = 'https://snspring.or.kr/programList.do'
                 if P.ModelSetting.get(f'use_board_snspring_{board}') == 'True':
                     getdata = sess.get(url)
                     matches = re.finditer(regex, getdata.text, re.MULTILINE)
                     for matchNum, match in enumerate(matches, start=1):
                         new_obj = match.groupdict()
+                        if new_obj.get('status') == '마감':
+                            continue
                         new_obj['site'] = 'snspring'
                         new_obj['board'] = board
                         ret['data'].append(new_obj)
@@ -419,8 +421,10 @@ class ModuleBasic(PluginModuleBase):
                     for item in (res_json.get('searchResult') or {}).get('youthpolicy') or []:
                         if YOUTH_REGION_FILTER not in (item.get('STDG_NM') or ''):
                             continue
-                        end_ymd = item.get('APLY_PRD_END_YMD') or ''
                         status = item.get('APLY_PRD_SE_CD') or ''
+                        if status == '마감':
+                            continue
+                        end_ymd = item.get('APLY_PRD_END_YMD') or ''
                         period = f" (~{end_ymd[:4]}-{end_ymd[4:6]}-{end_ymd[6:8]})" if len(end_ymd) == 8 else ''
                         new_obj = {
                             'site': 'youthcenter',
@@ -433,13 +437,15 @@ class ModuleBasic(PluginModuleBase):
         if P.ModelSetting.get('use_site_gg_youth') == 'True':
             boards = ['seongnam_gg_policy']
             for board in boards:
-                regex = r'<a href=\"\?mode=view&amp;arcNo=(?P<arcno>\d+)[^\"]*\"[^>]*>[\s\S]*?</span>\s*(?P<title>[^\r\n<]+?)\s*</a>\s*</h5>\s*<ul class=\"date\">[\s\S]*?<strong>모집기간 : </strong>[\s\S]*?(?P<start>\d{4}\.\d{2}\.\d{2})[\s\S]*?(?P<end>\d{4}\.\d{2}\.\d{2})'
+                regex = r'<span class=\"cate st\d\">(?P<status>[^<]*)</span>[\s\S]*?<h5>[\s\S]*?<a href=\"\?mode=view&amp;arcNo=(?P<arcno>\d+)[^\"]*\"[^>]*>[\s\S]*?</span>\s*(?P<title>[^\r\n<]+?)\s*</a>\s*</h5>\s*<ul class=\"date\">[\s\S]*?<strong>모집기간 : </strong>[\s\S]*?(?P<start>\d{4}\.\d{2}\.\d{2})[\s\S]*?(?P<end>\d{4}\.\d{2}\.\d{2})'
                 url = 'https://youth.gg.go.kr/gg/archive-policy-search.do?mode=list&pager.offset=0&pagerLimit=200&srAge=age_070&srArea=seongnam&srArea=GG&srArea=GGNot'
                 if P.ModelSetting.get(f'use_board_gg_youth_{board}') == 'True':
                     getdata = sess.get(url)
                     matches = re.finditer(regex, getdata.text, re.MULTILINE)
                     for matchNum, match in enumerate(matches, start=1):
                         item = match.groupdict()
+                        if item.get('status') == '마감':
+                            continue
                         new_obj = {
                             'site': 'gg_youth',
                             'board': board,
